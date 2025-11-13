@@ -1,43 +1,111 @@
-const express = require("express")
-const router = express.Router()
+const express = require("express") // aqui estou iniciando o express
+const router = express.Router() // aqui estou configurando a primeira parte da rota 
+const cors = require('cors')// aqui estou trazendo o pacote cors que pemite consumir essa api no front-end
 
 
-const app = express()
-const porta = 3333
+const conectaBancoDeDados = require('./bancoDeDados.js') //aqui estou ligando arquivo bancoDeDados
+conectaBancoDeDados() // aqui estou chamando a função que conecta o banco de dados
 
-const mulheres = [
-    {
-        nome: 'Luana Gomes',
-        imagem:'https://media.licdn.com/dms/image/v2/D4D03AQG8DWwWbcBkEA/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1729282248369?e=1762992000&v=beta&t=TDeWC7N87IfYfCEOHsSpw_FQ3SdvlgrPJoaLY62WMZA',
-        minibio: 'Estudante de Engenharia de Software'
-    
-    },
-    {
-        nome: 'Katherine Johnson',
-        imagem:'https://encrypted-tbn2.gstatic.com/licensed-image?q=tbn:ANd9GcQNPkQw0sFAUIVvKOd4L9r8XdIC2fZInERiF_SL6bX-xLOZmhSR4yRLRx63kRtxmT1RbF2ntsSnPMW1FwZZ0y6RcmhEtlY0-ZtK85V6KgT_mZk8kgCgB9L6zuF_xeWfo1bb9CEjcm1MHFA',
-        minibio: 'Matemática'
-    },
-    {
-         nome: 'Dorothy Vaughan',
-        imagem:'https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcS8g0kUY-He1LM2FXThDn5Fou4UAec9C7fEPiGhS2JoRb2d3rURmfNwn4YjUFSuwl0NF9OpGpv_vPfJm4YPKJ7jXt8eBsM8SPESrpfxEbpw',
-        minibio: 'Matemática' 
-    },
-    {
-         nome: 'Mary Jackson',
-        imagem:'https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQwXv2rauyccmHXu8WTKLCXIkWWsyQJ0C1wxNqtvI1IXuwsYgUIpNr-l95lMArWpxAcPidrLoH1y3-c8oOMPnrdb53eieYAAhgPIdwUQ54P3g',
-        minibio: 'Matemática e Engenheira aeroespacial' 
+
+const Mulher = require ('./mulherModel')
+
+const app = express() // aqui estou iniciando o app
+app.use (express.json())
+app.use(cors())
+const porta = 3333 // aqui estou criando a porta
+
+
+// GET
+async function mostraMulheres(request,response){
+
+    try{
+        const mulheresVindasDoBancoDeDados = await Mulher.find()
+
+        response.json(mulheresVindasDoBancoDeDados)
+    }catch (erro) {
+        console.log(erro)
+
     }
-
-]
-
-function mostraMulheres(request,response){
-    response.json(mulheres)
+        
 
 }
+// POST
+async function criaMulher(request, response){
+    const novaMulher = new Mulher({
+        
+        nome: request.body.nome,
+        imagem: request.body.imagem,
+        minibio: request.body.minibio,
+        citacao:request.body.citacao
+    })
 
+  try{
+    const mulherCriada = await novaMulher.save()
+    response.status(201).json(mulherCriada)
+
+  } catch (erro){
+    console.log(erro)
+  }
+}
+
+//PATCH
+async function corrigeMulher (request,response) {
+    try{
+        const mulherEncontrada = await Mulher.findById(request.params.id)
+        
+    if(request.body.nome){
+        mulherEncontrada.nome = request.body.nome
+    }
+
+    if(request.body.minibio){
+        mulherEncontrada.minibio = request.body.minibio
+    }
+    if(request.body.imagem){
+        mulherEncontrada.imagem = request.body.imagem
+    }
+    
+    if (request.body.citacao){
+        mulherEncontrada = request.body.citacao
+
+    }
+    const mulherAtualizadaNoBancoDeDados = await mulherEncontrada.save()
+
+    
+    response.json(mulherAtualizadaNoBancoDeDados)
+
+    } catch (erro){
+        console.log(erro)
+    }
+
+
+    }
+
+
+//DELETE
+async function deletaMulher(request,response){
+    try{
+        await Mulher.findByIdAndDelete(request.params.id)
+        response.json({messagem: 'Mulher deletada com sucesso!'})
+
+
+    }catch (erro){
+
+        console.log(erro)
+    }
+    
+  
+}
+
+app.use(router.get('/mulheres', mostraMulheres)) // configurei rota GET/mulheres
+app.use(router.post('/mulheres', criaMulher)) // configurei rota POST /mulheres 
+app.use(router.patch('/mulheres/:id', corrigeMulher)) //configurei a rota PATCH /mulheres
+app.use(router.delete('/mulheres/:id',deletaMulher)) // configurei a rota DELETE /mulheres
+
+// PORTA 
 function mostraPorta() {
     console.log("Servidor criado e rodando na porta ", porta)
 }
 
-app.use(router.get('/mulheres', mostraMulheres))
-app.listen(porta, mostraPorta)
+
+
+app.listen(porta, mostraPorta) // servidor ouvindo a porta
